@@ -3,10 +3,13 @@
 namespace Alura\Cursos\Controller;
 
 use Alura\Cursos\Entity\Curso;
+use Alura\Cursos\Helper\FlashMessageTrait;
 use Alura\Cursos\Infra\EntityManagerCreator;
 
 class Exclusao implements InterfaceControladorRequisicao
 {
+    use FlashMessageTrait;
+
     /**
      * @var \Doctrine\ORM\EntityManagerInterface
      */
@@ -27,6 +30,7 @@ class Exclusao implements InterfaceControladorRequisicao
         );
 
         if (is_null($id) || $id === false) {
+            $this->defineMensagem('danger', 'Curso não encontrado!');
             header('Location: /listar-cursos');
             return;
         }
@@ -35,8 +39,12 @@ class Exclusao implements InterfaceControladorRequisicao
             Curso::class,
             $id
         );
+
         $this->entityManager->remove($curso);
         $this->entityManager->flush();
+
+        $this->defineMensagem('success', 'Curso excluído com sucesso!');
+
         header('Location: /listar-cursos');
     }
 }
