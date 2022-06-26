@@ -3,6 +3,9 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use Alura\Cursos\Controller\InterfaceControladorRequisicao;
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Nyholm\Psr7Server\ServerRequestCreator;
+use Psr\Container\ContainerInterface;
 
 $caminho = $_SERVER['PATH_INFO'];
 $rotas = require __DIR__ . '/../config/routes.php';
@@ -21,7 +24,23 @@ if (!isset($_SESSION['logado']) && $ehRotaDeLogin === false) {
     exit();
 }
 
+$psr17Factory = new Psr17Factory();
+
+$creator = new ServerRequestCreator(
+    $psr17Factory, // ServerRequestFactory
+    $psr17Factory, // UriFactory
+    $psr17Factory, // UploadedFileFactory
+    $psr17Factory  // StreamFactory
+);
+
+$serverRequest = $creator->fromGlobals();
+
+/** @var ContainerInterface $container */
+$container = require __DIR__ . '/../config/dependencies.php';
+
 $classeControladora = $rotas[$caminho];
+
 /** @var InterfaceControladorRequisicao $controlador */
-$controlador = new $classeControladora();
-$controlador->processaRequisicao();
+$controlador = $container->get($classeControladora);
+
+$resposta = $controlador->handle($serverRequest);

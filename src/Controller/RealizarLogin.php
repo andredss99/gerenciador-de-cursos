@@ -5,8 +5,13 @@ namespace Alura\Cursos\Controller;
 use Alura\Cursos\Entity\Usuario;
 use Alura\Cursos\Helper\FlashMessageTrait;
 use Alura\Cursos\Infra\EntityManagerCreator;
+use Doctrine\ORM\EntityManagerInterface;
+use Nyholm\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
-class RealizarLogin implements InterfaceControladorRequisicao
+class RealizarLogin implements RequestHandlerInterface
 {
     use FlashMessageTrait;
 
@@ -15,30 +20,34 @@ class RealizarLogin implements InterfaceControladorRequisicao
      */
     private $repositorioDeUsuarios;
 
-    public function __construct()
+    /**
+     * @var EntityManagerInterface
+     */
+    private EntityManagerInterface $entityManager;
+
+    public function __construct(EntityManagerInterface $entityManager)
     {
-        $entityManager = (new EntityManagerCreator())->getEntityManager();
+        $this->entityManager = $entityManager;
         $this->repositorioDeUsuarios = $entityManager
             ->getRepository(Usuario::class);
     }
 
-    public function processaRequisicao(): void
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $email = filter_input(
-            INPUT_POST,
-            'email',
+            $request->getParsedBody()['email'],
             FILTER_VALIDATE_EMAIL
         );
 
+        $resposta = new Response(401, ['Location' => '/login']);
+
         if (is_null($email) || $email === false) {
             $this->defineMensagem('danger', 'O e-mail digitado não é um e-mail válido.');
-            header('Location: /login');
-            return;
+            return $resposta;
         }
 
         $senha = filter_input(
-            INPUT_POST,
-            'senha',
+            $request->getParsedBody()['senha'],
             FILTER_SANITIZE_STRING
         );
 
@@ -46,14 +55,17 @@ class RealizarLogin implements InterfaceControladorRequisicao
         $usuario = $this->repositorioDeUsuarios
             ->findOneBy(['email' => $email]);
 
+        $resposta = new Response(401, ['Location' => '/login']);
+
         if (is_null($usuario) || !$usuario->senhaEstaCorreta($senha)) {
             $this->defineMensagem('danger', 'E-mail ou senha inválidos');
-            header('Location: /login');
-            return;
+            return $resposta;
         }
 
         $_SESSION['logado'] = true;
 
-        header('Location: /listar-cursos');
+        $resposta = new Response(302, ['Location' => '/listar-cursos']);
+
+        return $resposta;
     }
 }
